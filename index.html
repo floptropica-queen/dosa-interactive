@@ -1,4 +1,122 @@
-[glitch.activate()]
+<script>
+(function() {
+  const GLITCH_CHARS = [
+    '\u2591','\u2592','\u2593','\u2588','\u2584','\u2580','\u25A0','\u25A1',
+    '\u25AA','\u25AB','\u25CF','\u25CB','\u25D0','\u25D1','\u25D2','\u25D3',
+    '\u25D4','\u25D5','\u25D6','\u25D7','\u2666','\u2660','\u2663','\u2665',
+    '\u2620','\u2622','\u2623','\u26A1','\u26A0','\u2715','\u2716','\u2717',
+    '\u2718','\u274C','\u00C6','\u00E6','\u00D8','\u00F8','\u00DF','\u0110',
+    '\u0111','\u0141','\u0142','\u0195','\u019E','\u01A7','\u01B1','\u0298',
+    '\u03A8','\u03A9','\u03B1','\u03B4','\u03BB','\u03C0','\u03C3','\u03C6',
+    '\u03C8','\u03C9','\u2200','\u2202','\u2203','\u2205','\u2207','\u2208',
+    '\u2209','\u220B','\u220F','\u2211','\u221A','\u221E','\u2227','\u2228',
+    '\u2229','\u222A','\u222B','\u2248','\u2260','\u2261','\u2264','\u2265'
+  ];
+
+  const ZALGO_ABOVE = [];
+  const ZALGO_BELOW = [];
+  for (let i = 0x0300; i <= 0x036F; i++) {
+    if (i <= 0x0314 || i >= 0x033D) ZALGO_ABOVE.push(String.fromCharCode(i));
+    else ZALGO_BELOW.push(String.fromCharCode(i));
+  }
+
+  function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function corruptText(text, intensity) {
+    return text.split('').map(function(c) {
+      if (c === ' ' || c === '\n') return c;
+      return Math.random() < intensity ? randItem(GLITCH_CHARS) : c;
+    }).join('');
+  }
+
+  function zalgoify(text, intensity) {
+    if (intensity <= 0) return text;
+    var count = Math.max(1, Math.round(intensity * 8));
+    return text.split('').map(function(c) {
+      if (c === ' ' || c === '\n') return c;
+      var result = c;
+      var n = randInt(1, count);
+      for (var i = 0; i < n; i++) {
+        result += Math.random() < 0.5 ? randItem(ZALGO_ABOVE) : randItem(ZALGO_BELOW);
+      }
+      return result;
+    }).join('');
+  }
+
+  function glitchOnce(el, intensity, zalgo, duration) {
+    var original = el.textContent;
+    var corrupted = corruptText(original, intensity);
+    if (zalgo > 0) corrupted = zalgoify(corrupted, zalgo);
+    el.textContent = corrupted;
+    setTimeout(function() { el.textContent = original; }, duration);
+  }
+
+  function startLoop(el, min, max, minD, dRange, intensity, zalgo) {
+    if (el._glitchRunning) return;
+    el._glitchRunning = true;
+    function tick() {
+      if (!el._glitchRunning) return;
+      var dur = minD + Math.floor(Math.random() * dRange);
+      glitchOnce(el, intensity, zalgo, dur);
+      var wait = randInt(min, max);
+      setTimeout(tick, wait);
+    }
+    tick();
+  }
+
+  window.glitch = {
+    getGlitchChars: function() {
+      return GLITCH_CHARS.slice();
+    },
+
+    triggerGlitch: function(element, duration) {
+      if (!element) return;
+      if (duration === undefined) duration = 150;
+      glitchOnce(element, 0.4, 0, duration);
+    },
+
+    processGlitchTags: function(root) {
+      root = root || document;
+      var tags = root.querySelectorAll('glitch');
+      tags.forEach(function(el) {
+        var min  = parseInt(el.getAttribute('min'), 10);
+        var max  = parseInt(el.getAttribute('max'), 10);
+        var intensity = parseFloat(el.getAttribute('intensity'));
+        var zalgo     = parseFloat(el.getAttribute('zalgo'));
+        if (isNaN(min)) min = 1000;
+        if (isNaN(max)) max = 3000;
+        if (isNaN(intensity) || intensity < 0) intensity = 0.3;
+        if (isNaN(zalgo) || zalgo < 0) zalgo = 0;
+        var minD = 150;
+        var dRange = 200;
+        startLoop(el, min, max, minD, dRange, intensity, zalgo);
+      });
+    },
+
+    enableGlitch: function(element, min, max, minD, dRange, intensity, zalgo) {
+      if (!element) return;
+      if (min === undefined) min = 3000;
+      if (max === undefined) max = 10000;
+      if (minD === undefined) minD = 250;
+      if (dRange === undefined) dRange = 350;
+      if (intensity === undefined) intensity = 0.2;
+      if (zalgo === undefined) zalgo = 0;
+      startLoop(element, min, max, minD, dRange, intensity, zalgo);
+    },
+
+    activate: function() {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          glitch.processGlitchTags();
+        });
+      } else {
+        glitch.processGlitchTags();
+      }
+    }
+  };
+})();
+</script>
 <!--
 Completed: Desktop simulation, Local Archive wiki, Scribbles notepad, Cipher Terminal.
 Now with localStorage persistence for notes, cipher progression, discovered wiki entries, CRT effect strength, custom wallpaper, and unredacted words.
@@ -234,7 +352,7 @@ function scenarios() {
       },
       "Thorne_Notes": {
         title: "Dr. Thorne — Personal Notes",
-        text: "Recovered from {Dr_Thorne|Dr. Thorne's} quarters during the {BIO_Investigation|BIO investigation}. Excerpts follow:<br><br>September 12: 'She spoke to me today. Not in English. Not in any language I know. But I understood her. She said the thing in the Deeps is not what we think. She said it is [[REDACTED:grieving]].'<br><br>September 15: 'I dreamed I was in the chamber with her. Not the observation chamber — the other one. The one underground. I have never been underground. The walls were breathing and the light was [[REDACTED:old]].'<br><br>September 18: 'They want to enact Protocol Seven. They want me to sit in the room while they sever her. I have requested reassignment three times. They will not let me leave. I am the only one who can [[REDACTED:hear]] her.'<br><br>September 20: 'I asked her what the entity wants. She said: "It wants to be seen. It has been unseen for so long that being seen is the only thing that makes it [[REDACTED:real]]." I understand that now. I understand too much.'<br><br>Final entry, undated: 'The {Session_Logs|session logs} show that I was in the room during the cascade. But I don't remember being there. I remember being [[REDACTED:below]]. I remember what it showed me. I am writing this from the observation chamber. I do not remember entering it.'",
+        text: "Recovered from {Dr_Thorne|Dr. Thorne's} quarters during the {BIO_Investigation|BIO investigation}. Excerpts follow:<br><br>September 12: 'She spoke to me today. Not in English. Not in any language I know. But I understood her. She said the thing in the Deeps is not what we think. She said it is [[REDACTED:grieving]].'<br><br>September 15: 'I dreamed I was in the chamber with her. Not the observation chamber — the other one. The one underground. I have never been underground. The walls were breathing and the light was [[REDACTED:old]].'<br><br>September 18: 'They want to enact Protocol Seven. They want me to sit in the room while they sever her. I have requested reassignment three times. They will not let me leave. I am the only one who can [[REDACTED:hear]] her.'<br><br>September 20: 'I asked her what the entity wants. She said: &quot;It wants to be seen. It has been unseen for so long that being seen is the only thing that makes it [[REDACTED:real]].&quot; I understand that now. I understand too much.'<br><br>Final entry, undated: 'The {Session_Logs|session logs} show that I was in the room during the cascade. But I don't remember being there. I remember being [[REDACTED:below]]. I remember what it showed me. I am writing this from the observation chamber. I do not remember entering it.'",
         default: false, clearance: 6, status: "PERSONAL — RECOVERED"
       },
       "The_Truth": {
