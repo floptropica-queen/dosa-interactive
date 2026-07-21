@@ -1,3 +1,5 @@
+
+<!DOCTYPE html>
 <script>
 (function() {
   const GLITCH_CHARS = [
@@ -126,7 +128,7 @@ Added: When closing a tab, the next visible window with the highest z-index is h
 Added: Glitchy typewriter boot sequence with progress bar and memory check.
 Added: Player can upload an image from Settings to use as desktop wallpaper.
 Added: Preset wallpaper options in Settings (Deep, Steel, Zone, Static, Blood).
-Added: Animated 3D rotating "H_OS" logo on the boot screen.
+Added: Animated 3D rotating "DoSa.os" logo on the boot screen.
 Added: Universal glitch text engine that can be applied to any element anywhere.
 Added: <glitch> tag support with optional min/max timing, intensity for normal corruption, and zalgo intensity for diacritical layering.
 Example: <glitch min="2000" max="5000" intensity="0.5" zalgo="0.7">text</glitch>
@@ -481,6 +483,7 @@ function scenarios() {
   .desk-icon:active { transform: scale(0.92); }
   .icon-box { width: 48px; height: 48px; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; background: #2c3e50; border: 1px solid #444; font-size: 24px; }
   .win { position: fixed; background: var(--win-bg); border: 1px solid #555; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; z-index: 10; overflow: hidden; width: 600px; height: 450px; top: 15%; left: 15%; }
+  .win[hidden] { display: none !important; }
   .win-header { display: flex; justify-content: space-between; align-items: center; background: #252830; padding: 5px 10px; border-bottom: 1px solid #333; cursor: grab; }
   .win-title { font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 8px; }
   .win-controls { display: flex; gap: 5px; }
@@ -931,7 +934,7 @@ function scenarios() {
 </style>
 
 <div id="bootCtn">
-  <div id="bootSkipPromptEl" style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); color:var(--green); font-size:12px; letter-spacing:1px; opacity:0; transition:opacity 0.4s; pointer-events:none; text-shadow:0 0 4px rgba(46,204,113,0.4); z-index:100001;">Press any key or click to skip</div>
+  <button id="bootContinueBtn" style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); background:var(--green); color:#000; border:none; padding:8px 24px; font-size:13px; font-weight:bold; letter-spacing:1px; cursor:pointer; opacity:0; transition:opacity 0.4s; pointer-events:none; text-shadow:none; z-index:100001; font-family:monospace;" onclick="stopBootLogo(); document.getElementById('bootCtn').style.display='none'">CONTINUE</button>
   <div style="width:90%; max-width:900px; text-align:left; display:flex; flex-direction:row; align-items:center; justify-content:space-between; max-height:90vh;">
     <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
       <div id="bootHeaderEl" style="color:var(--green); text-shadow:0 0 8px var(--green); margin-bottom:12px; font-size:16px; letter-spacing:2px; min-height:20px;">■■■■■■■■■■■■■■</div>
@@ -1383,8 +1386,6 @@ function scenarios() {
 </div>
 
 <script>
-  let skipBootFlag = false; // Tracks user request to skip the boot animation
-
   let activeZIndex = 100;
   function bringToFront(id) {
     let el = document.getElementById(id);
@@ -2457,6 +2458,7 @@ function scenarios() {
   }
 
   let currentCipherIdx = 0;
+  let currentDeclassifyPuzzleId = null;
   
   function isCipherVisible(idx) { return idx === 0 || ciphers[idx-1].solved; }
   
@@ -2697,7 +2699,7 @@ function scenarios() {
     return words;
   }
   
-  let currentDeclassifyPuzzleId = null;
+  // currentDeclassifyPuzzleId moved up before loadScenarioStateFromStorage
   let currentPuzzleWord = '';
   let currentPuzzleParts = [];
   let currentPuzzleDecoys = [];
@@ -3715,7 +3717,7 @@ function scenarios() {
       // --- HUD text ---
       ctx.font = '7px monospace';
       ctx.fillStyle = 'rgba(46, 204, 113, 0.4)';
-      ctx.fillText('H_OS', 8, 14);
+      ctx.fillText('DoSa.os', 8, 14);
       ctx.fillText('v9.2.1', 8, H - 8);
       ctx.textAlign = 'right';
       ctx.fillText('SYS.READY', W - 8, 14);
@@ -3744,7 +3746,7 @@ function scenarios() {
         ctx.putImageData(img, offset, sliceY);
       }
 
-      // --- 3D rotating "H_os" text (lower-right corner) ---
+      // --- 3D rotating "DoSa.os" text (lower-right corner) ---
       let hosX = W - 78;
       let hosY = H - 42;
       let hosRotY = t * 0.9;
@@ -3768,7 +3770,7 @@ function scenarios() {
         ctx.save();
         ctx.translate(hosX + dx, hosY + dy);
         ctx.scale(cosY, 1);
-        ctx.fillText('H_os', 0, 0);
+        ctx.fillText('DoSa.os', 0, 0);
         ctx.restore();
       }
       // Front face (crisp, bright)
@@ -3779,7 +3781,7 @@ function scenarios() {
       ctx.save();
       ctx.translate(hosX, hosY);
       ctx.scale(cosY, 1);
-      ctx.fillText('H_os', 0, 0);
+      ctx.fillText('DoSa.os', 0, 0);
       ctx.restore();
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
@@ -3809,27 +3811,11 @@ function scenarios() {
     bootStatusEl.textContent = '';
     initBootLogo();
     
-    // Show skip prompt after 800ms
-    setTimeout(() => { if(bootSkipPromptEl) bootSkipPromptEl.style.opacity = '0.7'; }, 800);
-    
-    // Install one-time input listeners that flag the skip request
-    let skipHandler = () => { skipBootFlag = true; if(bootCtn) bootCtn.style.display = 'none'; };
-    document.addEventListener('keydown', skipHandler, {once:true});
-    document.addEventListener('mousedown', skipHandler, {once:true});
-    
-    // Wrap sleep so every delay boundary checks the skip flag
-    let _sleep = sleep;
-    sleep = async (ms) => {
-      if(skipBootFlag) throw new Error('SKIP_BOOT');
-      await _sleep(ms);
-      if(skipBootFlag) throw new Error('SKIP_BOOT');
-    };
-    
     let headerGlitchTimer = null;
     
     try {
       // Glitchy header reveal
-      let targetHeader = "HORROR_OS v9.2.1 [BUILD 9940x]";
+      let targetHeader = "Department.of.Supernatural.Affairs_OS v3.35.4a";
       for(let i = 0; i <= targetHeader.length; i++) {
         let scrambled = targetHeader.split('').map((c, idx) => {
           if(idx < i) return c;
@@ -3867,7 +3853,17 @@ function scenarios() {
         { text: "DECRYPTING PERSONAL ARCHIVES... ", type: "ok" },
         { text: "FAILURE: 3 UNREAD MESSAGES [URGENT]", type: "err" },
         { text: "SYSTEM: WELCOME BACK, INVESTIGATOR.", type: "ok" },
-        { text: "INITIALIZING DESKTOP ENVIRONMENT...", type: "ok" }
+        { text: "INITIALIZING DESKTOP ENVIRONMENT...", type: "ok" },
+        { text: "10%...", type: "err" },
+        { text: "20%...", type: "err" },
+        { text: "30%...", type: "err" },
+        { text: "40%...", type: "warn" },
+        { text: "50%...", type: "warn" },
+        { text: "60%...", type: "warn" },
+        { text: "70%...", type: "ok" },
+        { text: "80%...", type: "ok" },
+        { text: "90%...", type: "ok" },
+        { text: "completed...", type: "ok" }
       ];
       
       for(let i = 0; i < messages.length; i++) {
@@ -3898,9 +3894,9 @@ function scenarios() {
         bootTextCtnEl.scrollTop = bootTextCtnEl.scrollHeight;
         
         // chance for a post-type full line glitch
-        if(Math.random() > 0.5) {
+        if(Math.random() > 0.7) {
           glitch.triggerGlitch(line, 250 + Math.floor(Math.random() * 250));
-          await sleep(200);
+          await sleep(100);
         }
         
         let pct = Math.round(((i + 1) / messages.length) * 100);
@@ -3920,21 +3916,16 @@ function scenarios() {
       }
       
       if(headerGlitchTimer) clearInterval(headerGlitchTimer);
-      stopBootLogo();
       await sleep(700);
-      document.getElementById('bootCtn').style.display = 'none';
-    } catch (e) {
-      if(e.message === 'SKIP_BOOT') {
-        if(headerGlitchTimer) clearInterval(headerGlitchTimer);
-        stopBootLogo();
-        bootCtn.style.display = 'none';
-        return;
+      // Show the continue button
+      let bootContinueBtn = document.getElementById('bootContinueBtn');
+      if(bootContinueBtn) {
+        bootContinueBtn.style.opacity = '1';
+        bootContinueBtn.style.pointerEvents = 'auto';
       }
+    } catch (e) {
+      if(headerGlitchTimer) clearInterval(headerGlitchTimer);
       throw e;
-    } finally {
-      sleep = _sleep;
-      document.removeEventListener('keydown', skipHandler);
-      document.removeEventListener('mousedown', skipHandler);
     }
   }
   
